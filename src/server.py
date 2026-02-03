@@ -26,7 +26,7 @@ async def handle_list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="calculate_tai",
-            description="計算台灣 16 張麻將台數 (Calculate Taiwan 16-card Mahjong Tai/Points)",
+            description="依據中華麻將競技協會標準計算台灣 16 張麻將台數",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -47,6 +47,17 @@ async def handle_list_tools() -> list[types.Tool]:
                     "is_self_drawn": {
                         "type": "boolean",
                         "description": "是否為自摸"
+                    },
+                    "is_concealed": {
+                        "type": "boolean",
+                        "description": "是否為門清",
+                        "default": False
+                    },
+                    "wait_type": {
+                        "type": "string",
+                        "enum": ["normal", "edge"],
+                        "description": "聽牌類型。normal: 一般, edge: 邊張/嵌張/單吊 (+1)",
+                        "default": "normal"
                     },
                     "wind_round": {
                         "type": "string",
@@ -70,7 +81,17 @@ async def handle_list_tools() -> list[types.Tool]:
                     "flower_tiles": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "胡家擁有的花牌列表 (f1-f8)。f1-f4: 春夏秋冬, f5-f8: 梅蘭竹菊"
+                        "description": "胡家擁有的花牌列表 (f1-f8)。"
+                    },
+                    "is_robbing_kong": {
+                        "type": "boolean",
+                        "description": "是否為搶槓 (+1)",
+                        "default": False
+                    },
+                    "is_last_tile": {
+                        "type": "boolean",
+                        "description": "是否為海底撈月 (+1)",
+                        "default": False
                     }
                 },
                 "required": ["melds", "eye", "hu_tile", "is_self_drawn", "wind_round", "wind_seat", "is_dealer"]
@@ -93,16 +114,20 @@ async def handle_call_tool(
                 eye=arguments.get("eye"),
                 hu_tile=arguments.get("hu_tile"),
                 is_self_drawn=arguments.get("is_self_drawn"),
+                is_concealed=arguments.get("is_concealed", False),
+                wait_type=arguments.get("wait_type", "normal"),
                 is_dealer=arguments.get("is_dealer"),
                 dealer_count=arguments.get("dealer_count", 0),
                 wind_round=arguments.get("wind_round"),
                 wind_seat=arguments.get("wind_seat"),
-                flower_tiles=arguments.get("flower_tiles", [])
+                flower_tiles=arguments.get("flower_tiles", []),
+                is_robbing_kong=arguments.get("is_robbing_kong", False),
+                is_last_tile=arguments.get("is_last_tile", False)
             )
             
-            summary = f"### 麻將台數計算結果\n"
+            summary = f"### 🀄️ 麻將台數計算結果 (標準規則)\n"
             summary += f"- **總台數**: {result['total_tai']} 台\n"
-            summary += f"- **詳細內容**:\n"
+            summary += f"- **詳細台數內容**:\n"
             for reason in result['reasons']:
                 summary += f"  - {reason}\n"
             
@@ -119,7 +144,7 @@ async def main():
             write_stream,
             InitializationOptions(
                 server_name="mcp-tw-mahjong",
-                server_version="0.1.0",
+                server_version="0.2.0",
                 capabilities=server.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},
